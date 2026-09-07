@@ -7,6 +7,7 @@ interface ProviderConfig {
 	baseUrl: string | null;
 	endpoints?: { id: string; label: string; baseUrl: string; api: string }[];
 	enabledModels: AllowlistEntry[];
+	imageModels?: AllowlistEntry[];
 }
 
 const state = {
@@ -48,6 +49,7 @@ const db = {
 									...config,
 									endpoints: JSON.stringify(config.endpoints ?? []),
 									enabledModels: JSON.stringify(config.enabledModels),
+									imageModels: JSON.stringify(config.imageModels ?? []),
 								}))
 							: [],
 					where(column: string, _operator: string, value: string) {
@@ -519,6 +521,41 @@ describe("catalog model policy", () => {
 		} finally {
 			globalThis.fetch = originalFetch;
 		}
+	});
+
+	test("requires an explicit pi-ai mapping for image models", async () => {
+		configureModels({
+			provider: "openrouter",
+			apiKey: "configured-key",
+			baseUrl: null,
+			endpoints: [
+				{
+					id: "images",
+					label: "OpenRouter Images",
+					baseUrl: "https://openrouter.ai/api/v1",
+					api: "openrouter-images",
+				},
+			],
+			enabledModels: [],
+			imageModels: [
+				{
+					id: "gemini-3.1-flash-lite-image",
+					endpointId: "images",
+					api: "openrouter-images",
+					visibility: "public",
+					name: "Nano Banana 2 Lite",
+					image: { input: true, aspectRatios: [], resolutions: [] },
+				},
+			],
+		});
+		expect(await catalog.listAvailableImageModels()).toHaveLength(0);
+
+		state.providerConfigs[0]!.imageModels![0]!.piProvider = "openrouter";
+		state.providerConfigs[0]!.imageModels![0]!.piModel =
+			"google/gemini-3.1-flash-lite-image";
+		expect(await catalog.listAvailableImageModels()).toContainEqual(
+			expect.objectContaining({ modelId: "gemini-3.1-flash-lite-image" }),
+		);
 	});
 
 	test("normalizes base URL for google-generative-ai endpoints", () => {
