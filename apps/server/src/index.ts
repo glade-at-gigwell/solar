@@ -74,7 +74,8 @@ function staticCacheControl(pathname: string) {
 		pathname === "/" ||
 		filename === "index.html" ||
 		filename === "manifest.webmanifest" ||
-		filename === "sw.js"
+		filename === "sw.js" ||
+		filename === "favicon.ico"
 	) {
 		return "no-cache";
 	}
@@ -318,6 +319,9 @@ const server = Bun.serve({
 		"/health": dispatchAppRequest,
 		"/healthz": dispatchAppRequest,
 		"/manifest.webmanifest": isProduction
+			? serveProductionWeb
+			: serveDevelopmentPublicFile,
+		"/favicon.ico": isProduction
 			? serveProductionWeb
 			: serveDevelopmentPublicFile,
 		"/icons/*": isProduction ? serveProductionWeb : serveDevelopmentPublicFile,
